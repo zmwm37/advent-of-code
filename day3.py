@@ -75,8 +75,8 @@ def life_support_rating(bit_array, index = 0, match_most_freq = True):
             find least frequent if False.
 
     Outputs:
-        rv (int): A decimal integer representation of the algorithmically
-            determined final binary number.
+        rv (array): A 2d array containing a single row, the bits of the
+            algorithmically determined final binary number.
     '''
     if len(bit_array) == 1:
         rv =  bit_array
