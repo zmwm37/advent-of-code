@@ -24,23 +24,52 @@ def parse_input(coordinates):
         directions[i] = coords_int
     return directions, max_x, max_y
 
-#test_file_path = 'day5-test-data.txt'
+# test_file_path = 'day5-test-data.txt'
 # raw_test_input = read_input(test_file_path)
 file_path = 'day5-data.txt'
 raw_input = read_input(file_path)
-directions, max_x, max_y = parse_input(raw_input)
-
-# create a matrix of 0s that is NxM
-vents = np.zeros((max_x + 1, max_y + 1))    
+  
     
-# loop through each line and add 1 to location in diagram
-for (x1,y1), (x2,y2) in directions.values():
-    if x1 == x2 or y1 == y2:
+def count_vents(input, diagonal = False):
+    '''
+    Create a matrix where each value is the number of vents at the (i,j) 
+    position
+
+    Input:
+        input: list of unparsed strings of vent coordinates in 
+            (x1,y1) -> (x2, y2) format
+        diagonal: boolean indicating whether diagonal vents should be included
+            (True) or excluded (False)
+    '''
+    directions, max_x, max_y = parse_input(input)
+
+    # create a matrix of 0s that is NxM
+    vents = np.zeros((max_x + 1, max_y + 1))  
+
+    for (x1,y1), (x2,y2) in directions.values():
         row_start = min(y1, y2) 
         row_end = max(y1, y2) + 1
         col_start = min(x1, x2)
         col_end = max(x1, x2) + 1
-        vents[row_start: row_end, col_start: col_end] += 1
+        # case 1 - vertical or horizontal line
+        if x1 == x2 or y1 == y2:
+            vents[row_start: row_end, col_start: col_end] += 1
+        elif diagonal:
+            # case 2 - top left to bottom right diagonal
+            if (x1 < x2 and y1 < y2) or (x1 > x2 and y1 > y2):
+                for i in range(abs(x2 - x1) + 1):
+                    vents[row_start + i, col_start + i] += 1
+            # case 3 - bottom left to top right diagonal
+            else:
+                for i in range(abs(x2 - x1) + 1):
+                    vents[row_end - (i + 1), col_start + i] += 1
 
+
+    return vents
+
+part_1_vents = count_vents(raw_input)
 # count where two+ vents overlap
-(vents >= 2).sum()
+(part_1_vents >= 2).sum()
+
+part_2_vents = count_vents(raw_input, diagonal = True)
+(part_2_vents >= 2).sum()
