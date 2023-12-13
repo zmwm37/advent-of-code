@@ -12,6 +12,59 @@ def is_symbol(c:str)->bool:
     else:
         return False
 
+def add_to_gear_index(i:int, j:int, num:int, gear_index:dict):
+    '''
+    Add gear to appropriate place in gear_index dictionary.
+    '''
+    if gear_index.get(i):
+        if gear_index[i].get(j):
+            gear_index[i][j].append(num)
+        else:
+            gear_index[i][j] = [num]
+    else:
+        gear_index[i] = {j: [num]}
+        
+
+def scan_for_symbol(indexes:tuple, strings:tuple, gear_index:dict)->int:
+    '''
+    Once a number has been completed, scan neighborhood for symbols. If it is, return
+    the number, otherwise return -1.
+    '''
+    p, q, i = indexes
+    prev, current, future = strings
+    num = int(current[p:q + 1])
+    return_num = False
+    if p - 1 >= 0:
+        if current[p - 1] in special_characters:
+            if current[p - 1] == '*':
+                add_to_gear_index(i, p - 1, num, gear_index)
+            return_num = True
+    if q + 1 < len(current):
+        if current[q + 1] in special_characters:
+            if current[q + 1] == '*':
+                add_to_gear_index(i, q + 1, num, gear_index)
+            return_num = True
+   
+    new_p = max(0, p - 1)
+    new_q = min(len(current), q + 2)
+    for j in range(new_p, new_q):
+        if prev != '':
+            if prev[j] in special_characters:
+                return_num = True
+                if prev[j] == '*':
+                    add_to_gear_index(i-1, j, num, gear_index)
+        if future != '':
+            if future[j] in special_characters:
+                return_num = True
+                if future[j] == '*':
+                    add_to_gear_index(i+1, j, num, gear_index)
+
+    if return_num:
+        return num
+    else:
+        return -1
+
+    
 def is_int(c:str)->bool:
     '''
     Test if character is integer
@@ -22,84 +75,78 @@ def is_int(c:str)->bool:
         return False
     return True
 
-def find_val_cols(string:str)->tuple:
-    num_idx = []
-    sym_idx = []
-    gear_idx = []
+def find_val_cols(string:str, prev_string:str, next_string:str, number_list:list, gear_index:dict, row_idx:int)->tuple:
+    '''
+    In a line, find numbes and scan for symbols
+    '''
     p = None
     q = None
     prev_number = False
     current_number = False
-    number = ''
     for i, c in enumerate(string):
         # if integer and prev not, add p
         if is_int(c):
             current_number = True
-                number += c
-            if not prev_number: # current char number, prev not
+            if not prev_number: # current char number, prev not -> start new number
                 p = i
                 prev_number = True
-            if i + 1 == len(string): # current char number, end of string
+            if i + 1 == len(string): # current char number, end of string -> scan symbol
                 q = i
-                num_idx.append((p, q))
+                number_with_symbol = scan_for_symbol(indexes=(p, q, row_idx), strings=(prev_string, string, next_string), gear_index=gear_index)
+                if number_with_symbol != -1:
+                    number_list.append(number_with_symbol)
                 prev_number = False
                 p, q = None, None
             # current char number, prev is, not end of string
         else:
             current_number = False 
-            if prev_number: # current char not, prev is
+            if prev_number: # current char not, prev is -> end of number 
                 q = i - 1
-                num_idx.append((p, q))
+                number_with_symbol = scan_for_symbol(indexes=(p, q, row_idx), strings=(prev_string, string, next_string), gear_index=gear_index)
+                if number_with_symbol != -1:
+                    number_list.append(number_with_symbol)
                 prev_number = False
                 p, q = None, None
             # current chart not, prev not
-            if is_symbol(c):
-                sym_idx.append(i)
-    return (num_idx, sym_idx)
 
-def build_dicts(lines:list)->tuple:
-    num_dict = {}
-    sym_dict = {-1:[],len(lines): []}
-    for i, line in enumerate(lines):
-        num_idx, sym_idx = find_val_cols(line)
-        num_dict[i] = num_idx; sym_dict[i] = sym_idx
+def get_gear_ratio_sum(gear_index:dict)->int:
+    gear_ratios = []
+    for k, v in gear_index.items():
+        for j, u in v.items():
+            if len(u) == 2:
+                product = 1
+                for val in u:
+                    product = product * val
+                gear_ratios.append(product)
+    return sum(gear_ratios)
     
-    return (num_dict, sym_dict)
 
-def number_by_symbol(i, p, q, sym_dict)->bool:
-    if (p - 1 in sym_dict[i]) or (q + 1 in sym_dict[i]):
-        return True
-    else:
-        #print(f'sym_dict[i-1] {sym_dict[i-1]}')
-        #print(f'sym_dict[i+1] {sym_dict[i+1]}')
-        for j in range((p-1),(q+2)):
-            #print(f'j: {j}')
-            
-            # TODOP: fix indexing so not out of bounds for rows
-            if (j in sym_dict[i-1]) or (j in sym_dict[i+1]):
-                return True
-    return False
+def get_numbers(lines:list)->tuple:
+    number_list = []
+    gear_index = {}
+    for idx, line in enumerate(lines):
+        if idx == 0:
+            prev = ''
+        else:
+            prev = lines[idx - 1]
+        if idx == len(lines) - 1:
+            future = ''
+        else:
+            future = lines[idx + 1]
     
-def get_part_numbers(num_dict:dict, sym_dict:dict, numbers:list):
-    part_numbers = []
-    for i, val in num_dict.items():
-        #print(f'ROW: {i}---')
-        for tup in val:
-            #print(f'tup: {tup}')
-            p, q = tup
-            #print(f'by symbol?: {number_by_symbol(i, p, q, sym_dict)}')
-            if number_by_symbol(i, p, q, sym_dict):
-                part_numbers.append(int(numbers[i][p:q+1]))
+        find_val_cols(line, prev, future, number_list, gear_index, idx)
+        
+    number_sum = sum(number_list)print
+    gear_ratio_sum = get_gear_ratio_sum(gear_index)
+    return (number_sum, gear_ratio_sum)
 
-    return part_numbers 
 
 if __name__ == "__main__":
     FILEPATH = 'day3.txt'
     with open(FILEPATH) as f:
         raw = f.readlines()
         lines = [i.strip('\n') for i in raw]
-        num_dict, sym_dict = build_dicts(lines)
-        part_numbers = get_part_numbers(num_dict, sym_dict, lines)
-        #print(f'Part numbers: {part_numbers}')
-        print(f'Sum of part numbers: {sum(part_numbers)}')
+        number_sum, gear_ratio_sum = get_numbers(lines)
+        print(f'Sum of part numbers: {number_sum}')
+        print(f'Sum of gear ratios: {gear_ratio_sum}')
         
